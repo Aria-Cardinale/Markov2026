@@ -1,0 +1,89 @@
+library(ggplot2)
+library(reshape2)
+
+set.seed(42)
+
+a = 0.04
+b = 0.16
+K = 0.1
+S = 1:5
+N = length(S)
+
+pn = K * exp(a * S)        # p(n, n+1)
+qn = K * exp(b * (S - 1))  # q(n, n-1)
+
+P = matrix(0, nrow = N, ncol = N)
+for (i in 1:N) {
+  right = if (i < N) pn[i] else 0
+  left  = if (i > 1) qn[i] else 0
+  if (i < N) P[i, i + 1] = right
+  if (i > 1) P[i, i - 1] = left
+  P[i, i] = 1 - right - left
+}
+
+cat("Transition matrix P:\n")
+print(round(P, 4))
+
+unnorm = exp((a - b) * S * (S - 1) / 2)
+pi_a   = unnorm / sum(unnorm)
+
+eig     = eigen(t(P))
+idx     = which.min(abs(eig$values - 1))   # index of eigenvalue closest to 1
+pi_b    = Re(eig$vectors[, idx])
+pi_b    = pi_b / sum(pi_b)                 # normalize
+
+n_steps = 2e6
+counts  = integer(N)
+state   = 1L   # start in state 1 (index)
+
+for (step in seq_len(n_steps)) {
+  counts[state] <- counts[state] + 1L
+  state <- sample(N, size = 1, prob = P[state, ])
+}
+
+pi_c = counts / sum(counts)
+
+cat("\n")
+cat(sprintf("%6s %14s %14s %14s\n", "State", "Analytical", "Eigenvector", "Simulation"))
+cat(strrep("-", 52), "\n")
+for (i in 1:N) {
+  cat(sprintf("%6d %14.6f %14.6f %14.6f\n", i, pi_a[i], pi_b[i], pi_c[i]))
+}
+
+
+df = data.frame(
+  State  = rep(S, 3),
+  Prob   = c(pi_a, pi_b, pi_c),
+  Method = rep(c("Analytical (detailed balance)",
+                 "Eigenvector of Pᵀ",
+                 "Simulation (2M steps)"), each = N)
+)
+df$Method <- factor(df$Method, levels = c(
+  "Analytical (detailed balance)",
+  "Eigenvector of Pᵀ",
+  "Simulation (2M steps)"
+))
+
+pal = c(
+  "Analytical (detailed balance)" = "#4fc3f7",
+  "Eigenvector of Pᵀ"             = "#f06292",
+  "Simulation (2M steps)"         = "#a5d6a7"
+)
+
+p = ggplot(df, aes(x = factor(State), y = Prob, fill = Method)) +
+  geom_bar(stat = "identity", position = position_dodge(width = 0.75),
+           width = 0.7, color = "white", linewidth = 0.2, alpha = 0.88) +
+  geom_text(aes(label = sprintf("%.4f", Prob), color = Method),
+            position = position_dodge(width = 0.75),
+            vjust = -0.4, size = 2.8, fontface = "bold", show.legend = FALSE) +
+  scale_fill_manual(values = pal) +
+  scale_color_manual(values = pal) +
+  labs(
+    title    = "Stationary Distribution — Three Methods",
+    x        = "State",
+    y        = "Stationary Probability π(i)",
+    fill     = NULL,
+    caption  = paste0("a = ", a, "  b = ", b, "  K = ", K)
+  ) +
+  theme_bw()
+p
