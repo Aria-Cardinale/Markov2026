@@ -1,0 +1,49 @@
+avg_a = 2.0
+avg_b = 1.5
+rate_a = avg_a / 90
+rate_b = avg_b / 90
+
+time_seq = seq(0, 90, length.out = 500)
+
+data_b = data.frame(
+  t = time_seq,
+  prob = sapply(time_seq, function(ti) {
+    tau = 90 - ti
+    dskellam(0, rate_a * tau, rate_b * tau)
+  })
+)
+
+plot_b = ggplot(data_b, aes(x = t, y = prob)) +
+  geom_line(color = "#CFB87C", size = 1.2) +
+  labs(title = "Probability of a Tie (Assuming 0-0 Score)",
+       subtitle = "Calculated as a function of current game time t",
+       x = "Time t (minutes)", y = "P(Tie at 90')") +
+  theme_minimal() +
+  ylim(0, 1)
+
+
+data_c = data.frame(
+  t = time_seq,
+  prob = sapply(time_seq, function(ti) {
+    tau = 90 - ti
+    if (ti < 60) {
+      dskellam(0, rate_a * tau, rate_b * tau)
+    } else {
+      dskellam(-1, rate_a * tau, rate_b * tau)
+    }
+  })
+)
+
+plot_c <- ggplot(data_c, aes(x = t, y = prob)) +
+  geom_line(color = "#CFB87C", size = 1.2) +
+  geom_vline(xintercept = 60, linetype = "dashed", color = "black") +
+  annotate("text", x = 58, y = 0.4, label = "Goal Scored at 60'", angle = 90) +
+  labs(title = "Otis' Hopes (Goal for Team A at 60')",
+       x = "Time t (minutes)", y = "P(Tie at 90')") +
+  theme_minimal() +
+  ylim(0, 0.5)
+
+print(plot_b)
+print(plot_c)
+
+
