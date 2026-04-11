@@ -1,0 +1,30 @@
+set.seed(123)
+t_max = 48
+lambda = 3
+
+sim_team = function(label) {
+  times = c()
+  current_t = 0
+  while(current_t < t_max) {
+    current_t = current_t + rexp(1, lambda)
+    if(current_t < t_max) times <- c(times, current_t)
+  }
+  data.frame(time = times, team = label)
+}
+df_c = rbind(sim_team("A"), sim_team("B"))
+
+total_baskets = rpois(1, 2 * lambda * t_max)
+event_times = sort(runif(total_baskets, 0, t_max))
+assignment = sample(c("A", "B"), total_baskets, replace = TRUE)
+df_d = data.frame(time = event_times, team = assignment)
+
+plot_game = function(df, title) {
+  ggplot(df, aes(x = time, xend = time, y = 0, yend = 1, color = team)) +
+    geom_segment(size = 1) +
+    scale_color_manual(values = c("A" = "red", "B" = "blue")) +
+    labs(title = title, x = "Time (min)", y = "") +
+    theme_minimal() + theme(axis.text.y = element_blank())
+}
+
+print(plot_game(df_c, "Simulation (c): Independent Exponentials"))
+print(plot_game(df_d, "Simulation (d): Merged & Split Process"))
