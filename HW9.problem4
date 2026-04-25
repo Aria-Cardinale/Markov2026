@@ -1,0 +1,57 @@
+library(ggplot2)
+
+euler_gamma <- 0.5772156649
+
+harmonic <- function(n) {
+  if (n <= 0) return(0)
+  sum(1 / seq_len(n))
+}
+
+beta <- 1
+m_max <- 50
+m_vals <- 2:m_max
+
+tau_stoch <- sapply(m_vals, function(m) harmonic(m - 1) / beta)
+tau_det   <- log(m_vals) / beta
+tau_diff  <- tau_stoch - tau_det
+
+df <- data.frame(
+  m    = rep(m_vals, 3),
+  tau  = c(tau_stoch, tau_det, tau_diff),
+  type = rep(c("Stochastic: H(m-1)/β", "Deterministic: ln(m)/β", "Difference"), each = length(m_vals))
+)
+
+df$type <- factor(df$type, levels = c("Stochastic: H(m-1)/β", "Deterministic: ln(m)/β", "Difference"))
+
+ggplot(df, aes(x = m, y = tau, color = type, linetype = type)) +
+  geom_line(linewidth = 0.9) +
+  scale_color_manual(values = c(
+    "Stochastic: H(m-1)/β"  = "#534AB7",
+    "Deterministic: ln(m)/β" = "#D85A30",
+    "Difference"             = "#1D9E75"
+  )) +
+  scale_linetype_manual(values = c(
+    "Stochastic: H(m-1)/β"  = "solid",
+    "Deterministic: ln(m)/β" = "dashed",
+    "Difference"             = "dotdash"
+  )) +
+  annotate("text",
+    x = m_max * 0.75, y = euler_gamma / beta + 0.08,
+    label = sprintf("γ/β ≈ %.3f", euler_gamma / beta),
+    color = "#1D9E75", size = 3.5
+  ) +
+  labs(
+    title    = "Yule Process: Stochastic vs Deterministic Hitting Time",
+    subtitle = bquote("β = " * .(beta) * ";  asymptotic gap = γ/β ≈ " * .(round(euler_gamma / beta, 3))),
+    x        = "m (number of particles)",
+    y        = expression(tau[m] %.% beta ~ "(scaled time)"),
+    color    = NULL,
+    linetype = NULL
+  ) +
+  theme_minimal(base_size = 13) +
+  theme(
+    legend.position   = "top",
+    legend.key.width  = unit(1.5, "cm"),
+    plot.title        = element_text(face = "bold"),
+    panel.grid.minor  = element_blank()
+  )
